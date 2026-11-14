@@ -4,14 +4,13 @@ const { MongoClient } = require("mongodb");
 const jsonata = require("jsonata");
 
 class MongodbMonitorType extends MonitorType {
-
     name = "mongodb";
 
     /**
      * @inheritdoc
      */
     async check(monitor, heartbeat, _server) {
-        let command = { "ping": 1 };
+        let command = { ping: 1 };
         if (monitor.databaseQuery) {
             command = JSON.parse(monitor.databaseQuery);
         }
@@ -38,7 +37,11 @@ class MongodbMonitorType extends MonitorType {
             if (result.toString() === monitor.expectedValue) {
                 heartbeat.msg = "Command executed successfully and expected value was found";
             } else {
-                throw new Error("Query executed, but value is not equal to expected value, value was: [" + JSON.stringify(result) + "]");
+                throw new Error(
+                    "Query executed, but value is not equal to expected value, value was: [" +
+                        JSON.stringify(result) +
+                        "]"
+                );
             }
         }
 
@@ -49,8 +52,7 @@ class MongodbMonitorType extends MonitorType {
      * Connect to and run MongoDB command on a MongoDB database
      * @param {string} connectionString The database connection string
      * @param {object} command MongoDB command to run on the database
-     * @returns {Promise<(string[] | object[] | object)>} Response from
-     * server
+     * @returns {Promise<(string[] | object[] | object)>} Response from server
      */
     async runMongodbCommand(connectionString, command) {
         let client = await MongoClient.connect(connectionString);

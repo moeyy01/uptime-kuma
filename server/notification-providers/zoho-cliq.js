@@ -13,9 +13,9 @@ class ZohoCliq extends NotificationProvider {
      */
     _statusMessageFactory = (status, monitorName) => {
         if (status === DOWN) {
-            return `🔴 Application [${monitorName}] went down\n`;
+            return `🔴 [${monitorName}] went down\n`;
         } else if (status === UP) {
-            return `✅ Application [${monitorName}] is back online\n`;
+            return `### ✅ [${monitorName}] is back online\n`;
         }
         return "Notification\n";
     };
@@ -27,7 +27,8 @@ class ZohoCliq extends NotificationProvider {
      * @returns {Promise<void>}
      */
     _sendNotification = async (webhookUrl, payload) => {
-        await axios.post(webhookUrl, { text: payload.join("\n") });
+        let config = this.getAxiosConfigWithProxy({});
+        await axios.post(webhookUrl, { text: payload.join("\n") }, config);
     };
 
     /**
@@ -39,23 +40,13 @@ class ZohoCliq extends NotificationProvider {
      * @param {string} args.monitorUrl URL of monitor affected
      * @returns {Array} Notification payload
      */
-    _notificationPayloadFactory = ({
-        status,
-        monitorMessage,
-        monitorName,
-        monitorUrl,
-    }) => {
+    _notificationPayloadFactory = ({ status, monitorMessage, monitorName, monitorUrl }) => {
         const payload = [];
-        payload.push("### Uptime Kuma\n");
         payload.push(this._statusMessageFactory(status, monitorName));
         payload.push(`*Description:* ${monitorMessage}`);
 
-        if (monitorName) {
-            payload.push(`*Monitor:* ${monitorName}`);
-        }
-
         if (monitorUrl && monitorUrl !== "https://") {
-            payload.push(`*URL:* [${monitorUrl}](${monitorUrl})`);
+            payload.push(`*URL:* ${monitorUrl}`);
         }
 
         return payload;
@@ -69,7 +60,7 @@ class ZohoCliq extends NotificationProvider {
      */
     _handleGeneralNotification = (webhookUrl, msg) => {
         const payload = this._notificationPayloadFactory({
-            monitorMessage: msg
+            monitorMessage: msg,
         });
 
         return this._sendNotification(webhookUrl, payload);
@@ -87,30 +78,15 @@ class ZohoCliq extends NotificationProvider {
                 return okMsg;
             }
 
-            let url;
-            switch (monitorJSON["type"]) {
-                case "http":
-                case "keywork":
-                    url = monitorJSON["url"];
-                    break;
-                case "docker":
-                    url = monitorJSON["docker_host"];
-                    break;
-                default:
-                    url = monitorJSON["hostname"];
-                    break;
-            }
-
             const payload = this._notificationPayloadFactory({
                 monitorMessage: heartbeatJSON.msg,
                 monitorName: monitorJSON.name,
-                monitorUrl: url,
-                status: heartbeatJSON.status
+                monitorUrl: this.extractAddress(monitorJSON),
+                status: heartbeatJSON.status,
             });
 
             await this._sendNotification(notification.webhookUrl, payload);
             return okMsg;
-
         } catch (error) {
             this.throwGeneralAxiosError(error);
         }
